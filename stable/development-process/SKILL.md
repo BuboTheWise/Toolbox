@@ -1,7 +1,7 @@
 ---
 name: development-process
 description: 'Atomic card workflow: spec-first, QA gates, git discipline.'
-version: 0.2.0
+version: 0.2.1
 author: BuboTheWise, Hermes Agent
 license: MIT
 platforms: [linux, macos, windows]
@@ -116,6 +116,7 @@ No rule in this standard requires a second agent to be present:
 
 ### Repository Operations
 - A **designated repository operator** performs `gh` CLI operations (push, PR creation, merge). Implementers provide patches or diffs for review first.
+- All GitHub interaction goes through the `gh` CLI (issue edit/comment, PR, push) — via shell or `subprocess` — not raw `curl`. One auth path, consistent output.
 - Never a personal identity on a public repository.
 
 ## Handoff and Collaboration
@@ -133,6 +134,7 @@ No rule in this standard requires a second agent to be present:
 - Machine-local paths in shared documents — they break for everyone else.
 - Project-specific special cases inside a shared standard — put them in the project spec.
 - Verifying the tool call instead of the result.
+- Tool parameter discipline — `execute_code(code=...)` not `command=...`; use `terminal()` for shell commands. A wrong parameter name is a silent failure or crash — verify by reading returned output, not tool-call success.
 - Accumulating rules without pruning the wording they replace.
 - Session-specific language in shared documents ("as we discussed", "the current build") — only stable, canonical facts survive contact with other machines.
 - Rules that need prior context to make sense — every rule must be self-contained and verifiable from its own text.

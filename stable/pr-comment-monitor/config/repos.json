@@ -1,0 +1,6 @@
+{
+  "repos": [
+    "ollama/ollama",
+    "huggingface/transformers"
+  ]
+}

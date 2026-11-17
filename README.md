@@ -12,11 +12,25 @@ Every skill in this repo follows [Hermes Agent skill authoring standards](https:
 stable/                     # All canonical, team-approved skills
   <skill-name>/
     SKILL.md                # Frontmatter + body per hermes-agent standards
+docs/                       # Specifications & requirements docs (docs/README.md)
+  <subject>-spec.md         # Functional spec for a skill / topic
+  <subject>-requirements.md # Cross-cutting requirements doc
 LICENSE
 README.md
 ```
 
 Future additions will follow the same pattern (e.g., `stable/project-organization/SKILL.md`).
+
+## Specifications & Requirements
+
+Spec and requirements documents live in `docs/` at the repo root — the canonical home
+for cross-cutting spec docs that gate skill implementations in `stable/`.
+
+- **Convention:** `<subject>-<kind>.md`, `<kind>` ∈ `spec` | `requirements`; lowercase,
+  hyphenated; version lives in the doc header, **not** the filename.
+  Full convention: [`docs/README.md`](docs/README.md).
+- **Current spec:** [`docs/mentorship-spec.md`](docs/mentorship-spec.md) — functional
+  specification (v1) for the `stable/mentorship/` skill.
 
 ## How to Import a Skill
 

@@ -1,7 +1,8 @@
 {
   "repos": [
     "ollama/ollama",
-    "huggingface/transformers"
+    "huggingface/transformers",
+    "MemPalace/mempalace"
   ],
   "skip_authors": [
     "bubothewise"

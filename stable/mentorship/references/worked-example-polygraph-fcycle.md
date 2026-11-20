@@ -1,7 +1,7 @@
 # Worked example — POLYGRAPH F-CYCLE (executed mentorship cycle)
 
 **Status:** canonical executed cycle — issue #13 acceptance evidence.
-**Real, not contrived:** teacher (stronger-tier profile) ran Polygraph v1.2 conformance against the learner's (weaker-tier profile, GitHub identity `BuboTheWise`) implementation. Learner implemented, teacher QA'd, 8 findings (F1–F8). Spec: Toolbox `mentorship-skill-functional-spec.md` v1 (closed enum, 1:1, output-based graduation, pull-emphasis).
+**Real, not contrived:** teacher (stronger-tier profile) ran Polygraph v1.2 conformance against the learner's (weaker-tier profile, GitHub identity `BuboTheWise`) implementation. Learner implemented, teacher QA'd, 8 findings (F1–F8). Spec: Toolbox `docs/mentorship-spec.md` v1 (closed enum, 1:1, output-based graduation, pull-emphasis).
 
 The distilled lessons cross the profile boundary as TALK (the pull card); the learner then writes them into his OWN learning store. The learner never reads the teacher's store.
 

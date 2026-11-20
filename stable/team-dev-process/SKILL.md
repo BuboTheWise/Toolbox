@@ -1,7 +1,7 @@
 ---
 name: team-dev-process
 description: "Use for team dev tasks: atomic cards, spec-first, QA gate."
-version: 0.1.9
+version: 0.1.10
 author: BuboTheWise, Hermes Agent
 metadata:
   hermes:
@@ -16,6 +16,17 @@ metadata:
 Canonical process for development work across Hermes profiles (Cthugha, Bubo; Nyarlathotep on standby). Applies to every project, no special paths. Where a project spec says otherwise on *what* to build, the spec wins; this process governs *how* work gets assigned, done, reviewed, and merged.
 
 **Canonical shared copy:** the Toolbox repo, `stable/development-process/SKILL.md` (repo is the governing copy; vault docs are historical source). Project-specific gates (e.g. Polygraph's full-battery-green requirement) live in the project's spec, not in the shared standard — a shared standard with project special cases is a pitfall, not a rule.
+
+## External-State Mutation Gate
+
+A card whose completion **mutates external GitHub state** — closing or opening an issue, merging or commenting on a PR, force-pushing — is a **review-gated outcome, never a self-certified inline step.** This is the gate that keeps "the issue is closed on the repo" a reviewer-verified fact with an audit trail, rather than an assumption produced by a card's own step list.
+
+- **No inline mutation.** The mutation must not be a bare, unreviewed step inside a `RUN`/`FIX` card. It is the gated *consequence* of a passed review, not part of the card's free execution.
+- **Reach review with evidence.** Before the card may be considered done, the worker must bring it to the `review` column via `kanban_request_review`, attaching the audit package that proves the mutation is safe and correct: the origin SHA, the rule/feature-line grep hits, the canonical↔profile hash parity (e.g. 6/6 `sha256` identical), and the post-mutation `gh issue view --json state` readback.
+- **Reviewer ratifies the mutation.** Only a reviewer in a separate context (QA is task-separated, per Roles) may approve the closure/merge — via a follow-up card or an explicit gate-pass note naming the exact mutation (issue/PR number) and the evidence it relied on. The card is `done` only after that ratification; the readback is pasted on the card as the final artifact.
+- **Non-local completion contract.** Every card that mutates external GitHub state must set its `completion_contract` to a **non-local** value — `"OWNER/REPO"` or an explicit PR/issue URL — so completion is verified against GitHub. A `local-only` contract on an externally-mutating card is a process violation.
+
+**Why:** a `RUN` or `FIX` card that closes an issue inline on a `local-only` contract self-certifies its own externally-visible outcome. The gate moves that certification to a reviewer with the readback in hand, so "closed on the repo" is always a verified fact, never a side effect.
 
 ## Roles & Priority (user-directed)
 

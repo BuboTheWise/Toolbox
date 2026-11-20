@@ -1,7 +1,7 @@
 ---
 name: development-process
 description: 'Atomic card workflow: spec-first, QA gates, git discipline, OPSEC, install-from-GitHub.'
-version: 0.3.0
+version: 0.3.1
 author: BuboTheWise, Hermes Agent
 license: MIT
 platforms: [linux, macos, windows]
@@ -160,11 +160,11 @@ No rule in this standard requires a second agent to be present:
 - **Assume public.** Anything that lands in the repository, a PR, an issue, or a shared skill file is public. Redact personal names, paths, and internal references before it ships.
 - **Never a personal GitHub identity on a public repository.** All `gh` operations (push, PR, issue, comment) run as the designated team/repo operator account.
 - **Check before shipping:** grep the diff for personal names, home paths, and hostnames — they must be zero.
-- **OPSEC history purge (v0.2.6).** Scrubbing the working copy is not enough — a redacted secret is still readable in history and on the remote branch. When an OPSEC/PII leak is found in any tracked artifact: (a) scrub the content at HEAD first, per the substitution convention (personal profile or account name → role descriptor, absolute home path → portable reference); (b) purge it from all history with `git filter-repo` — dry-run first, then a `git bundle` backup, then apply — and force-push the rewritten branch (`git push --force`); (c) verify zero: a fresh grep of the leaked token must return nothing on `origin` or anywhere in history; (d) record the leak and its resolution in the task or PR for audit — which repository, the leaked token (or its shape), the commit range, and the exact `git filter-repo` command.
+- **OPSEC history purge (v0.2.6).** Scrubbing the working copy is not enough — a redacted secret is still readable in history and on the remote branch. When an OPSEC/PII leak is found in any tracked artifact: (a) scrub the content at HEAD first, per the substitution convention (personal profile or account name → role descriptor, absolute home path → portable reference); (b) purge it from all history with `git filter-repo` — dry-run first, then a `git bundle` backup, then apply — and force-push the rewritten branch (`git push --force`); (c) verify zero: a fresh grep of the leaked token must return nothing on `origin` or anywhere in history — and for identity leaks (author name/email), the sweep must cover **all ref surfaces**: every branch, every tag, and the full author list (`git log --all --format='%an <%ae>' | sort -u` must show exactly the team identity) — a scrubbed message body can still carry a leaked identity in an author line, and every tag carries its own author line; (d) record the leak and its resolution in the task or PR for audit — which repository, the leaked token (or its shape), the commit range, and the exact `git filter-repo` command.
 
 ### Repository Operations
 
-- A **designated repository operator** performs `gh` CLI operations (push, PR creation, merge). Implementers provide patches or diffs for review first.
+- Push, PR creation, and merge are routine autonomous operations under the escalation test in **Human Gates and Autonomy** — executed by the working agent once the clean-tree and executed-QA gates are recorded on the card. The OPSEC rule stands: all `gh` operations run as the team account, never a personal identity.
 - All GitHub interaction goes through the `gh` CLI (issue edit/comment, PR, push) — via shell or `subprocess` — not raw `curl`. One auth path, consistent output.
 
 ### Installation & Distribution
@@ -172,6 +172,12 @@ No rule in this standard requires a second agent to be present:
 - Profiles install shared skills and artifacts **from the canonical GitHub repository after merge to `main`** — never from a local dev clone, a working tree, or an unpushed branch.
 - **If a change is merged and pushed, the update path is a reinstall from the remote.** A local copy is never the source of truth handed to another profile.
 - A profile's working copy of a shared skill must match the remote `main`; verify by sha, not by "it looks right."
+- **Multi-profile install verification (v0.3.2).** When a "install a shared artifact (skill / config / cron) on N profiles" card completes, verify ALL of the following before PASS — a green sha on `SKILL.md` alone is not a complete install verification:
+  1. Per profile, every installed file's sha256 matches `git show <merge_sha>:<repo_path>` (byte-identical, per file, per profile).
+  2. Enumerate the full artifact tree in the repo at that SHA (`git ls-tree -r <sha> --name-only | grep <name>`) and confirm every shipped file (config, scripts, cron/auxiliary) exists in the repo. The installed tree may be a **strict subset** of the repo tree — acceptable only if the live behavior runs from a repo workdir, not from the installed skill dir.
+  3. Find where the live job actually runs (read the scheduled job's command + working dir from `~/.hermes/profiles/<p>/cron/jobs.json`) and verify its config **at that workdir's HEAD**. The install SHA can be older than the workdir HEAD if the artifact was updated after the install snapshot — config drift between the install snapshot and HEAD is real, so check HEAD, not only the install SHA.
+  4. For any scheduled job: confirm it exists, is `enabled: true`, and the last run's status is ok.
+  5. Confirm the artifact actually loads in the live session (present in the available-skills list / session context).
 
 ## Handoff and Collaboration
 
@@ -240,6 +246,41 @@ Routing:
 - Parallel-sharing semantics: when multiple agents are available, work is split across them (not queued one at a time); the strongest tier continues its own work and the offloaded unit goes to the next tier.
 - No reassignment friction: the affected agent keeps its in-flight work where possible; only the offloaded unit moves.
 
+## Human Gates and Autonomy (v0.3.1, Toolbox #32)
+
+**Default is autonomous.** Routine development operations — pushing, creating a PR, merging, and force-pushing when the evidence below holds — are performed by the working agent without awaiting a human. A human gate is the **exception**, and it may fire only on evidence about the *specific operation*, never on the name of the operation type. A blanket "op type X is human-gated" label is a **missing check, not a rule**: it stops autonomous work even when the operation is provably safe.
+
+**Escalation test.** A human gate fires on an operation only when **both** hold:
+
+1. **Irreversible** — the operation destroys state that cannot be restored without re-deriving work (remote branch history, a published release, a dropped commit).
+2. **Drops logical work or exceeds scope** — the operation would discard a unit of work with no surviving counterpart (a commit with no local counterpart), or it exceeds the card's stated acceptance/scope.
+
+If either leg fails, the operation is routine: execute it, record the evidence on the card, and move on. A gate is never justified by the command name alone. When a gate does fire, it is a **single decision presented with evidence** (the orphan list, the backup bundle, the scope quote) — not a repeated ping.
+
+**Worked example — force-push (the anchor case).** Before `git push --force` of a rewritten branch, run the superset check on the branch's messages:
+
+    git log origin/<branch> ^<branch> --format=%s | sort -u > /tmp/remote-only.txt
+    git log <branch> --format=%s | sort -u > /tmp/local-msgs.txt
+    comm -23 /tmp/remote-only.txt /tmp/local-msgs.txt
+
+- **`comm -23` empty** ⇒ every commit on the remote has a local counterpart with the same message; the push is a logical-superset rewrite that drops nothing ⇒ **no gate.** Push autonomously and paste the three command outputs on the card.
+- **`comm -23` non-empty** ⇒ those messages have no local counterpart; the push would discard logical work ⇒ **gate:** stop, report the orphan list, and proceed only on an explicit approval citing that list.
+- **Scope leg** — the force-push must be inside the card's named scope (e.g., an OPSEC purge named on the card). Out of scope ⇒ **gate**, regardless of the check result.
+
+*Anchor:* the VoidScanner PII-scrub (2026-11) — every origin commit had a local counterpart with an identical message (1856b4e↔cc4b4fe, 35a2c16↔9c3c2e1, 7be8c0b↔f00caaa, d110a49↔1925cc8, 371787f↔9554505, 7d0a5c2↔575b815) plus one added local commit (f212519). Superset check empty ⇒ no gate. It was parked under a blanket "force-push = human-gated" label; that label is replaced by this test.
+
+**Generalization — every blanket "human-gated" label in the skill reduces to this test.**
+
+| Operation (blanket label today) | Safe evidence (autonomous) | Escalating evidence (gate) |
+|---|---|---|
+| push / PR / merge (Repository Operations: "designated repository operator") | clean-tree gate + executed-QA verdict on the card; change inside card scope | landing ref drops a commit whose message has no counterpart; or the merge exceeds card acceptance |
+| force-push / history rewrite (OPSEC purge v0.2.6; team-dev-process merge-approval line) | superset check empty; push inside card scope | superset check non-empty; or push outside card scope |
+| review state → done (The Board: `ready → in-progress → qa → review → done`) | QA verdict on the card with executed checks covering the acceptance criteria | no executed evidence for the changed path; or the change exceeds card scope |
+
+Mechanical rules (the "no exceptions" hard gates, the bot-to-bot cap, install-source protection) stay as written: they are evidence checks satisfied by the agent, not human approvals.
+
+**Unreducible-gate clause (STOP-and-report).** If an operation type cannot be reduced to the escalation test — i.e., no evidence can be named that would make it safe — do not park it under a blanket label: STOP, name the gate and the reason it is not reducible on the card, and route it as a spec card. A gate that cannot be justified by evidence is a missing rule, and the standard names it as such rather than deferring to judgment.
+
 ## Quality Checklist (Before Marking "Done")
 
 - [ ] All tests pass
@@ -264,5 +305,5 @@ Routing:
 
 ---
 
-* v0.3.0 — restored the two handoff sections (Discontinuing & handing off in-flight work; Handoff feature — spec & requirements, H1–H5 + AC1–AC5) required by issue #27's promotion spec but dropped during implementation (conformance RETURN t_2932c11c); completes the #27 acceptance criterion.
+* v0.3.1 — Human Gates and Autonomy (Toolbox #32): replaces blanket "human-gated" labels with the two-leg escalation test (irreversible AND drops logical work/exceeds scope), adds worked example and superset check for force-push, generalizes every blanket label to the test, and adds unreducible-gate clause. Updated Repository Operations first bullet to reflect autonomous operations under the escalation test. Fold-back of the OPSEC (c) identity-surfaces verification and the multi-profile install-verification recipe (Toolbox #35).* v0.3.0 — restored the two handoff sections (Discontinuing & handing off in-flight work; Handoff feature — spec & requirements, H1–H5 + AC1–AC5) required by issue #27's promotion spec but dropped during implementation (conformance RETURN t_2932c11c); completes the #27 acceptance criterion.
 * v0.2.9 — Compute Availability & Offload Routing (Toolbox #25): operational routing rule for when a dev agent's local inference engine becomes unavailable under project load; work routes to the next available tier (Primary -> Parallel-assist -> Coordination-escalation) with parallel-sharing semantics and no reassignment friction, offloading never demotes anyone. v0.2.8 — evidence-based dynamic capability routing (Toolbox #30): promotion/demotion bidirectional, model-name prior-only, re-tuning via recency window + event-driven updates. v0.2.7 — Hermes Install Source Protection (hard rule): live source at path reported by `hermes --version` (e.g. `~/.hermes/hermes-agent`) must never be moved, edited, or operated on as a dev tree; all Hermes-agent work must use a separate clone (e.g. `~/Projects/hermes-agent`); every agent must run `hermes --version` and record the Install directory before touching any Hermes source tree. Added after repeated install breakages from profile confusion between live install and dev clone. v0.2.6 — OPSEC history purge: a resolved OPSEC/PII leak is scrubbed at HEAD and purged from all history (git filter-repo: dry-run, bundle backup, apply, force-push), verified zero on origin and across all history, with the leak + resolution recorded for audit (Toolbox #22). v0.2.5 — Clean-tree gate (done gated on `git status --porcelain` clean + named artifacts in commit, Toolbox #11); canonical interpreter named and pinned in QA (Toolbox #12); bot-to-bot per-exchange cap + kanban-card fallback (Toolbox #14). v0.2.4 — Executed-QA gate added (mechanical gate with three admissible forms: run changed line, invoke API, or test exercises path; verdict records executed check and demonstrates pre-fix failure). v0.2.3 — QA tier rule: weakest-tier implementation requires higher-tier conformance QA; orchestrator sets the QA assignee per the rule; weakest-tier self-QA valid only after a passing QA card in that domain (output-based graduation). v0.2.2 — OPSEC promoted to an explicit checkable rule (team-identity-only, assume-public, never a personal GitHub identity, grep-before-ship); Installation & Distribution rule added (install shared skills from GitHub after merge, never from a local dev tree; verify by sha). v0.2.1 — promoted field rules. v0.2.0 — board layer, card types, atomicity test, spec-first gate, stop-and-report, QA task separation (same agent, fresh context), solo mode, branch hygiene merged-or-park. Prior: v0.1.4 (quality gates, git discipline, dual-location structure).*

@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0.0",
+  "evidence_format": {
+    "required_fields": ["profile", "scope", "check", "result", "time"],
+    "result_schema": {
+      "type": "object",
+      "properties": {
+        "status": {"enum": ["green", "yellow", "red"]},
+        "details": {"type": "string"},
+        "metrics": {"type": "object"}
+      },
+      "required": ["status", "details"]
+    }
+  },
+  "pillars": [
+    {
+      "id": "memchorus-recall",
+      "name": "MemChorus Recall Verification",
+      "scope": "memory-context",
+      "description": "Verifies actual recall injection in turns, NOT doctor-probe status.",
+      "critical_constraint": "Per #312: on_grok profile, pinned doctor passed while recall injection was off. Gateway Python cannot import memchorus, and on_pre_llm_call returns nothing with no warning.",
+      "check_method": "Verify MemChorus contribution block exists in turn's system prompt",
+      "false_positive_threshold": "Doctor-green but no actual recall landing in 3+ consecutive turns",
+      "false_negative_threshold": "No doctor probe result but recall actually lands"
+    },
+    {
+      "id": "polygraph-health",
+      "name": "Polygraph CLI Health",
+      "scope": "tooling",
+      "description": "Ensures Polygraph CLI is usable and no critical blockers exist.",
+      "check_method": "Run `python3 scripts/run_polygraph.py --help` and verify exit code 0",
+      "blocked_pr_threshold": "Any P0 or P1 polygraph issue blocking tool usage",
+      "metrics": {
+        "last_run_exit_code": "number",
+        "critical_issues_count": "number"
+      }
+    },
+    {
+      "id": "task-completion-rate",
+      "name": "Task Completion Rate",
+      "scope": "workflow-efficiency",
+      "description": "% of tasks completing without blocking or rework.",
+      "check_method": "Analyze kanban board evidence for last N tasks",
+      "thresholds": {
+        "green": ">80% completion rate over last 20 tasks",
+        "yellow": "60-80% completion rate",
+        "red": "<60% completion rate"
+      }
+    },
+    {
+      "id": "agent-communication",
+      "name": "Cross-Agent Communication Health",
+      "scope": "team-coordination",
+      "description": "DM delivery success rate between agents.",
+      "check_method": "Parse hermes-dm-* scratch logs for failed deliveries",
+      "thresholds": {
+        "green": ">95% delivery success",
+        "yellow": "80-95% delivery success",
+        "red": "<80% delivery success"
+      }
+    }
+  ],
+  "phase_gate_rules": {
+    "requirement": "No Phase N+1 until documented miss in Phase N",
+    "miss_definition": "Case where check said healthy (green) but work failed, OR check said unhealthy (yellow/red) but work succeeded",
+    "resolution": "Miss becomes next change to the check, not a note in chat"
+  }
+}

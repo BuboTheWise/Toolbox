@@ -93,6 +93,32 @@ python3 team-health/scripts/check_polygraph.py --polygraph-repo <path> --github-
 - **False positive — `cthugha`:** `--help` returns exit 0 (would be green for the usability probe) but a real run `--tests 1A --base-url http://127.0.0.1:9 --no-tools` fails: `1A ERROR — All connection attempts failed`, Overall Grade FAIL, exit 1. `--help` proves importability + arg-parsing only, NOT that the tool produces a verified result. **Miss → check change:** a green `--help` is treated as necessary but not sufficient — the verdict pairs the usability probe with the blocker scan and records `cli_import_error`, and actual verification still requires exercising the model endpoint.
 - **False negative — `cthugha`:** issue #12 (P0, startup import failure on a missing local package) is OPEN so the blocker scan flags YELLOW, but the current code no longer imports that package and `--help` returns exit 0 from every context (repo root, neutral cwd, nyarlathotep skill dir) — the failure no longer reproduces. A stale open issue over-penalises a tool that works. **Miss → check change (next):** the check records `reproduces: false` on P0 import issues whose described failure the live `--help` probe does not show, so the stale issue is visible in evidence rather than silently over-penalising; such issues should be closed or re-scoped rather than left to keep the tool yellow.
 
+## Pillar 3 — `task-completion-rate` (implemented)
+
+**Recipe:**
+
+```bash
+python3 team-health/scripts/check_completion.py
+python3 team-health/scripts/check_completion.py --limit 50 --kanban-db <path>
+```
+
+**How it verifies (board evidence, not UI):**
+1. Opens the shared kanban SQLite store (`~/.hermes/kanban.db` — the same rows the `kanban_list`/`kanban_show` tools read) **read-only** (`mode=ro`); never mutates task data.
+2. Takes the last N (default 20) tasks with `status='done'`, most-recent first.
+3. A task is **clean** iff (a) zero `blocked` events in `task_events` (the board's record of a `blocked` or `needs_input` status change — covers dependency/needs_input/capability/transient) AND (b) every row in `task_runs` has a successful outcome (`completed`, `review_requested`). Any `blocked`/`crashed`/`timed_out`/`spawn_failed`/`gave_up`/`reclaimed`/`changes_requested` run counts as rework.
+4. `completion_rate` = clean / total.
+
+**Verdicts:**
+- **GREEN** — completion rate > 80%.
+- **YELLOW** — 60–80% rate, OR fewer than 10 tasks in the window (insufficient data).
+- **RED** — < 60% rate.
+
+**Documented misses (phase gate, live evidence from 2026-11-22 run, `evidence/completion-run-20261122.json`):**
+- **False positive — cthugha:** t_caa89f9b ("wing_isolation: accept `{PROFILE}_{CATEGORY}` as NATIVE for owning profile") shows ONE `completed` run and zero blocked events — a clean completion by this measure — yet issue #304 still required two later [FIX] tasks (t_f360c2e8, t_468a6223, "Fix wing_isolation flags owning-profile wings as foreign") because the delivered code was wrong. Same pattern: t_448d9258 (qa+merge #306, clean) was followed by t_b794de90 ("#308 follow-up: platform guards for 2 Windows test artifacts"). **Miss → reading rule:** a clean run history proves the *gate* passed, not that the *work* was right; a green rate must be read alongside the follow-up-fix density on the same issues (the per-task breakdown in `_evidence.tasks` makes the clean set auditable).
+- **False negative — cthugha:** t_c4232521 ("memchorus-recall retrieve: flat-file fallback") ran 3× crashed (2× "owner admission settled failed", 1× worker exited without a lifecycle call) before one successful `completed` run. This check counts it as rework (correct — the cost is real), but the deliverable landed and the work succeeded; the verdict is a delayed-success penalty, not a failed task. t_fd00e142 (blocked on a behavioral guard, then completed) is the same class. **Miss → check change (next):** distinguish transient-infrastructure rework (`crashed`/`reclaimed`/`timed_out`) from work-content rework (`blocked`/`changes_requested`) in metrics so a green rate is not silently eroded by spawn flakiness.
+
+**Live run 2026-11-22 (verification):** 16/20 clean (80.0%) → **YELLOW** (60–80 band). Penalised: t_718c1bc1 (blocked event), t_fd00e142 (blocked + rework run), t_c4232521 (3 crashed runs), t_db91c30e (1 crashed run). Edge cases verified on a scratch copy of the DB: 15% → RED; 5-task window → YELLOW insufficient data; missing DB → exit 1.
+
 ## Phase Gate Requirement
 
 Before advancing Phase N to N+1:

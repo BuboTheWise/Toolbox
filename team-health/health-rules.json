@@ -68,12 +68,30 @@
       "id": "task-completion-rate",
       "name": "Task Completion Rate",
       "scope": "workflow-efficiency",
+      "status": "implemented",
+      "check_script": "team-health/scripts/check_completion.py",
+      "evidence_file": "team-health/evidence/completion-run-20261122.json",
       "description": "% of tasks completing without blocking or rework.",
-      "check_method": "Analyze kanban board evidence for last N tasks",
-      "thresholds": {
-        "green": ">80% completion rate over last 20 tasks",
-        "yellow": "60-80% completion rate",
-        "red": "<60% completion rate"
+      "check_method": "Read the shared kanban SQLite store (~/.hermes/kanban.db, same rows the kanban_list/kanban_show tools read) READ-ONLY. Window = last N (default 20) tasks with status='done'. A task is CLEAN iff (a) it has zero `blocked` events in task_events (covers every block kind: dependency/needs_input/capability/transient — the board's record of a blocked or needs_input status change) AND (b) every row in task_runs has a successful outcome (`completed`, `review_requested`); any of `blocked`, `crashed`, `timed_out`, `spawn_failed`, `gave_up`, `reclaimed`, `changes_requested` counts as rework. completion_rate = clean / total.",
+      "evidence_source": "kanban SQLite store: tasks + task_events + task_runs (never the board UI)",
+      "critical_constraint": "Read-only: check never modifies task data; auto-correction for low-rate trends = comment or new card, not a silent edit",
+      "verdicts": {
+        "green": "completion rate > 80% over last N tasks",
+        "yellow": "60-80% completion rate, OR fewer than 10 tasks in window (insufficient data)",
+        "red": "< 60% completion rate"
+      },
+      "false_positive_threshold": "Clean run history (one `completed` run, zero blocked events) on a task whose DELIVERED WORK later required follow-up fix tasks on the same issue — completion gate passed, work still failed downstream",
+      "false_negative_threshold": "Task penalised as rework/blocked (crashed runs or a blocked event) but the work ultimately succeeded — a delayed success, counted as a failure by design",
+      "documented_misses": [
+        {"type": "false_positive", "profile": "cthugha", "case": "t_caa89f9b (\"wing_isolation: accept {PROFILE}_{CATEGORY} as NATIVE for owning profile\") shows ONE `completed` run and zero blocked events — clean by this measure — yet issue #304 still required two later [FIX] tasks (t_f360c2e8, t_468a6223, \"Fix wing_isolation flags owning-profile wings as foreign\") because the delivered code was wrong. Same pattern: t_448d9258 (qa+merge #306, clean) followed by t_b794de90 (\"#308 follow-up: platform guards for 2 Windows test artifacts\")."},
+        {"type": "false_negative", "profile": "cthugha", "case": "t_c4232521 (\"memchorus-recall retrieve: flat-file fallback\") ran 3x crashed (2x \"owner admission settled failed\", 1x worker exited without a lifecycle call) before one successful `completed` run — this check counts it as rework, but the deliverable landed and the work succeeded; the verdict is a delayed-success penalty, not a failed task. t_fd00e142 (blocked on a behavioral guard, then completed) is the same class.", "fix_next": "distinguish transient-infrastructure rework (crashed/reclaimed) from work-content rework (blocked/changes_requested) in metrics so a green rate is not silently eroded by spawn flakiness"}
+      ],
+      "metrics": {
+        "completion_rate": "number (0-100, 1 decimal)",
+        "total_tasks": "number (window size actually analyzed)",
+        "clean_tasks": "number",
+        "blocked_tasks": "number (>=1 blocked event)",
+        "rework_tasks": "number (>=1 non-successful run)"
       }
     },
     {

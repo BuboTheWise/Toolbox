@@ -42,9 +42,23 @@
       "id": "polygraph-health",
       "name": "Polygraph CLI Health",
       "scope": "tooling",
-      "description": "Ensures Polygraph CLI is usable and no critical blockers exist.",
-      "check_method": "Run `python3 scripts/run_polygraph.py --help` and verify exit code 0",
+      "status": "implemented",
+      "check_script": "team-health/scripts/check_polygraph.py",
+      "evidence_file": "team-health/evidence/polygraph-run-20261122.json",
+      "description": "Ensures the Polygraph CLI is usable and no P0/P1 blockers exist.",
+      "check_method": "Two probes combined: (1) run `python3 scripts/run_polygraph.py --help` in the Polygraph repo and capture the real exit code (non-zero -> red); (2) list OPEN issues on the GitHub repo and classify each P0 (CLI cannot start/parse - import/startup failure, entrypoint crash), P1 (CLI runs but result wrong/unusable-in-context - hardcoded model, OPSEC/hardcoded home paths), P2 (non-blocking). critical_issues = P0 + P1 count. P0 import failures are cross-referenced against the live --help probe to detect stale issues (reproduces: false).",
       "blocked_pr_threshold": "Any P0 or P1 polygraph issue blocking tool usage",
+      "verdicts": {
+        "green": "CLI --help exit 0 AND no open P0/P1 issues",
+        "yellow": "CLI --help exit 0 BUT >=1 open P0/P1 issue (tooling partially blocked)",
+        "red": "CLI --help exit != 0 (CLI not usable at all)"
+      },
+      "false_positive_threshold": "CLI --help exit 0 (green) but a real run against the model endpoint still fails -- --help only proves importability + arg-parsing, not a verified result",
+      "false_negative_threshold": "An open P0 CLI-import issue flagged blocking, but the current code no longer triggers that failure (stale issue over-penalises a working tool)",
+      "documented_misses": [
+        {"type": "false_positive", "profile": "cthugha", "case": "CLI --help exit 0 (would be green for the usability probe) but a real run `--tests 1A --base-url http://127.0.0.1:9 --no-tools` fails: '1A ERROR - All connection attempts failed', Overall Grade FAIL, exit 1. --help proves importability + arg-parsing only, not that the tool produces a verified result."},
+        {"type": "false_negative", "profile": "cthugha", "case": "issue #12 (P0, startup import failure on a missing local package) is OPEN so the blocker scan flags yellow, but the current code no longer imports that package and --help returns exit 0 from every context (repo root, neutral cwd, nyarlathotep skill dir) - the failure no longer reproduces.", "fix_next": "check records reproduces:false on P0 import issues whose described failure the live --help probe does not show, so the stale issue is visible in evidence rather than silently over-penalising"}
+      ],
       "metrics": {
         "last_run_exit_code": "number",
         "critical_issues_count": "number"

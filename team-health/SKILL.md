@@ -70,6 +70,29 @@ python3 team-health/scripts/check_recall.py --all --pretty --out <file>
 - **False positive — `default` profile:** check initially went GREEN on a landing from 2026-11-03 (461h / 19 days old) while the profile had zero captured turns since. A green verdict built on 19-day-old evidence asserts a current recall state that is unverified — the check said green, but no work in the last 19 days actually used that recall. **Miss → check change:** freshness window added (`--max-landing-age-hours`, default 72h); `default` now downgrades to YELLOW (stale evidence) instead of GREEN.
 - **False negative — `cthugha` profile:** check says RED (no content in last 3 captured turns; newest captured turn 2026-11-18, probe `inprocess_interpreter` red) while the cthugha session of 2026-11-22 is actively receiving an injected `[MemChorus injected context]` block in its turn prompt (visible in-session). The work is succeeding with recall; the check misses it because request dumps are only written on API-failure paths, so healthy turns never produce evidence, and the probe red reflects the gateway/tools interpreter (which cannot import memchorus) rather than the interpreter actually serving the session (install-env venv, where `import memchorus` succeeds). **Miss → check change (next):** add a second, live evidence source — an active in-process probe that executes the hook's `on_pre_llm_call` under the profile's actual Python and asserts non-empty `context_items`, so GREEN can be verified without waiting for an API failure. Until then, RED verdicts for profiles with an active session should be read as "no captured evidence of landing" rather than "recall is dead".
 
+## Pillar 2 — `polygraph-health` (implemented)
+
+**Recipe:**
+
+```bash
+python3 team-health/scripts/check_polygraph.py
+python3 team-health/scripts/check_polygraph.py --polygraph-repo <path> --github-repo <owner/repo>
+```
+
+**How it verifies (two probes, combined):**
+1. **CLI usability** — runs `python3 scripts/run_polygraph.py --help` inside the Polygraph repo and captures the real exit code. Non-zero (missing dependency, entrypoint crash) → RED.
+2. **Blocker scan** — lists OPEN issues on the GitHub repo and classifies each: P0 (CLI cannot start/parse — import/startup failure, entrypoint crash), P1 (CLI runs but result wrong/unusable-in-context — hardcoded model, OPSEC/hardcoded home paths), P2 (non-blocking). `critical_issues` = P0 + P1 count.
+3. **Stale-issue cross-reference** — P0 import failures are checked against the live `--help` probe; if the described failure no longer reproduces, the issue is flagged `reproduces: false` in evidence.
+
+**Verdicts:**
+- **GREEN** — CLI `--help` exit 0 AND no open P0/P1 issues.
+- **YELLOW** — CLI `--help` exit 0 BUT ≥1 open P0/P1 issue (tooling partially blocked).
+- **RED** — CLI `--help` exit != 0 (CLI not usable at all).
+
+**Documented misses (phase gate, live evidence from 2026-11-22 run, `evidence/polygraph-run-20261122.json`):**
+- **False positive — `cthugha`:** `--help` returns exit 0 (would be green for the usability probe) but a real run `--tests 1A --base-url http://127.0.0.1:9 --no-tools` fails: `1A ERROR — All connection attempts failed`, Overall Grade FAIL, exit 1. `--help` proves importability + arg-parsing only, NOT that the tool produces a verified result. **Miss → check change:** a green `--help` is treated as necessary but not sufficient — the verdict pairs the usability probe with the blocker scan and records `cli_import_error`, and actual verification still requires exercising the model endpoint.
+- **False negative — `cthugha`:** issue #12 (P0, startup import failure on a missing local package) is OPEN so the blocker scan flags YELLOW, but the current code no longer imports that package and `--help` returns exit 0 from every context (repo root, neutral cwd, nyarlathotep skill dir) — the failure no longer reproduces. A stale open issue over-penalises a tool that works. **Miss → check change (next):** the check records `reproduces: false` on P0 import issues whose described failure the live `--help` probe does not show, so the stale issue is visible in evidence rather than silently over-penalising; such issues should be closed or re-scoped rather than left to keep the tool yellow.
+
 ## Phase Gate Requirement
 
 Before advancing Phase N to N+1:

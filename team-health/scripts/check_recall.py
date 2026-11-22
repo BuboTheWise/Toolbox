@@ -39,11 +39,11 @@ Verdict semantics (content-first)
 - GREEN  : a CONTENT marker is present in >=1 of the last N captured turns
            (probe status recorded as contrast; a red probe is flagged as a
            probe false-positive, not a verdict).
-- YELLOW : no content in the last N turns, but the doctor probe reports
+- YELLOW : (a) no content in the last N turns, but the doctor probe reports
            green (zero failed probes) — the #312 signature: green probe,
-           no landing. Also used when there is no turn evidence at all and
-           the probe is green (unverifiable, probe-green is not a valid
-           signal).
+           no landing. Or (b) recall landed but the newest landing is older
+           than the freshness window (--max-landing-age-hours, default 72h) —
+           stale evidence cannot verify the CURRENT recall state.
 - RED    : no content in the last N turns AND the doctor probe is red or
            unknown (failed probes present, or doctor could not run).
 

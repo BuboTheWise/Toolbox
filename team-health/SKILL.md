@@ -31,7 +31,7 @@ Lightweight health monitoring that separates measurement (health) from routing/c
 | 1 | `memchorus-recall` | Actual recall injection in turns | Turn system prompt (not doctor-probe) |
 | 2 | `polygraph-health` | Polygraph CLI usable, no blocked PRs | Polygraph results + repo state |
 | 3 | `task-completion-rate` | % of tasks hitting completion gate | Kanban board evidence |
-| 4 | `agent-communication` | Cross-agent DM success rate | Bot mode DM logs |
+| 4 | `agent-communication` | Cross-agent DM delivery success rate | `message_agent` delivery results in profile `state.db` |
 
 ## Evidence Schema
 
@@ -118,6 +118,33 @@ python3 team-health/scripts/check_completion.py --limit 50 --kanban-db <path>
 - **False negative — cthugha:** t_c4232521 ("memchorus-recall retrieve: flat-file fallback") ran 3× crashed (2× "owner admission settled failed", 1× worker exited without a lifecycle call) before one successful `completed` run. This check counts it as rework (correct — the cost is real), but the deliverable landed and the work succeeded; the verdict is a delayed-success penalty, not a failed task. t_fd00e142 (blocked on a behavioral guard, then completed) is the same class. **Miss → check change (next):** distinguish transient-infrastructure rework (`crashed`/`reclaimed`/`timed_out`) from work-content rework (`blocked`/`changes_requested`) in metrics so a green rate is not silently eroded by spawn flakiness.
 
 **Live run 2026-11-22 (verification):** 16/20 clean (80.0%) → **YELLOW** (60–80 band). Penalised: t_718c1bc1 (blocked event), t_fd00e142 (blocked + rework run), t_c4232521 (3 crashed runs), t_db91c30e (1 crashed run). Edge cases verified on a scratch copy of the DB: 15% → RED; 5-task window → YELLOW insufficient data; missing DB → exit 1.
+
+## Pillar 4 — `agent-communication` (implemented)
+
+**Recipe:**
+
+```bash
+python3 team-health/scripts/check_communication.py
+python3 team-health/scripts/check_communication.py --window-days 7 --pretty
+```
+
+**How it verifies (transcript evidence, not gateway status):**
+1. Opens every local profile's `state.db` (`~/.hermes/profiles/<name>/state.db`, plus the shared `~/.hermes/state.db`) **read-only** (`mode=ro`); never mutates the transcripts.
+2. Selects every `message_agent` tool row (one DM attempt) inside the window (default 30d). The unit of measurement is one tool **call**: rows are grouped by `tool_call_id` and the best-classified row wins, because the harness stores two rows per call (a `[message_agent] …` truncated summary plus the real delivery result) — attempts are not double-counted.
+3. Classifies each call from the delivery-result JSON: **delivered** = `status` in {queued,settled,delivered,ok,success} and no error/reason (accepted by the gateway); **failed** = `error` present (with or without a delivery_id, e.g. `reason:"unknown"`), or `status`/`reason` in a known-failure set (`runtime_unavailable` "NOT sent", `ambiguous` "admission could not be confirmed"); **unknown** = anything else (kept in the total, lowers the rate conservatively).
+4. `delivery_rate` = delivered / total. Cross-checks the `hermes-dm-*` outbox under `~/.hermes/cache/scratch/` for currently-stuck/stale DMs — the outbox is corroborating, real-time "stuck now" evidence (a settled DM is unlinked on settle), **not** the rate source.
+
+**Verdicts:**
+- **GREEN** — delivery rate > 95%.
+- **YELLOW** — 80–95% rate, OR fewer than 10 DMs in the window (insufficient data).
+- **RED** — < 80% rate.
+
+**Documented misses (phase gate, live evidence from 2026-11-22 run, `evidence/communication-run-20261122.json`):**
+- **False positive — cthugha→bubo:** a DM (delivery_id `31725c02…`) shows `status:queued` — accepted by the gateway, so counted as *delivered* — yet the DM body is absent from bubo's transcript, i.e. it was dropped before bubo ever read it. "Delivered" = *accepted/queued by the gateway*, NOT *consumed by the recipient*. **Miss → reading rule:** accepted/queued is not proof the recipient received it; an accepted DM can still be a true drop that the rate alone cannot see (recipient-side absence, as here).
+- **False negative — cthugha→nyarlathotep:** a DM (delivery_id `ca57dda5…`) is marked `status:ambiguous` ("admission could not be confirmed" — classified as a *failure*), yet the recipient actually processed it: nyarlathotep's transcript shows the DM body plus a disposition decision on its content. An ambiguous admission is not necessarily a drop; the recipient may still be consuming it. **Miss → reading rule:** `ambiguous`/`failed` means "admission not confirmed", not "definitely dropped" — where the recipient transcript shows consumption, the failure verdict is a false negative.
+- **Miss → check change (made this run):** the first implementation filtered `content LIKE '%delivery_id%'`, which missed 14 failed DMs (error-only results carrying no delivery_id) and double-counted successes stored across two rows — reporting 93.4% (18 failures) instead of the true 88.3% (28 failures). Fixed by grouping on `tool_call_id` and including error-only rows; both were false negatives of the original query (the check under-counted failures).
+
+**Live run 2026-11-22 (verification):** 212/240 DMs delivered (88.3%) → **YELLOW** (80–95 band). Failure modes: ambiguous x9, runtime_unavailable x5, reason=unknown x14. Outbox stuck=1, stale=0. Edge cases verified: 1d window → 4 DMs < 10 → YELLOW (insufficient data); missing `--scratch-dir` → outbox 0, rate still computed; missing `--profiles-dir` → 0 DMs → YELLOW (no records); `--no-shared` → rate still computed.
 
 ## Phase Gate Requirement
 

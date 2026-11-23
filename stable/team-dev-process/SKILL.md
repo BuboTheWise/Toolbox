@@ -17,6 +17,16 @@ Canonical process for development work across Hermes profiles (Cthugha, Bubo; Ny
 
 **Canonical shared copy:** the Toolbox repo, `stable/development-process/SKILL.md` (repo is the governing copy; vault docs are historical source). Project-specific gates (e.g. Polygraph's full-battery-green requirement) live in the project's spec, not in the shared standard — a shared standard with project special cases is a pitfall, not a rule.
 
+**Installation / update mechanism:** Every profile that uses this skill **MUST** keep its copy in sync with the Toolbox repo. To update:
+```bash
+# Update from Toolbox repo (run this BEFORE starting any dev work):
+cp /home/stefan/Projects/Toolbox/stable/team-dev-process/SKILL.md ~/.hermes/profiles/<PROFILE>/skills/team-dev-process/SKILL.md
+sha256sum /home/stefan/Projects/Toolbox/stable/team-dev-process/SKILL.md \
+  ~/.hermes/profiles/<PROFILE>/skills/team-dev-process/SKILL.md
+# Verify the hashes match — if they differ, the profile is out of sync.
+```
+If the repo version's `version:` field is higher than the local version, the profile **must** be updated before any dev work begins. This is not optional — using a stale skill means missing rules and inconsistent process enforcement across agents. The install hook is the only mechanism that prevents silent divergence between profiles. When updating all profiles from the repo, always verify hash parity on every profile before proceeding.
+
 ## External-State Mutation Gate
 
 A card whose completion **mutates external GitHub state** — closing or opening an issue, merging or commenting on a PR, force-pushing — is a **review-gated outcome, never a self-certified inline step.** This is the gate that keeps "the issue is closed on the repo" a reviewer-verified fact with an audit trail, rather than an assumption produced by a card's own step list.

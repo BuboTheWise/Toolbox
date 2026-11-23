@@ -1,7 +1,7 @@
 ---
 name: development-process
 description: 'Atomic card workflow: spec-first, QA gates, git discipline, OPSEC, install-from-GitHub.'
-version: 0.3.1
+version: 0.4.0
 author: BuboTheWise, Hermes Agent
 license: MIT
 platforms: [linux, macos, windows]
@@ -20,6 +20,30 @@ applies equally — no project gets special paths or baked-in preferences. Every
 rule below must be followable verbatim by an agent with no local context.
 Where a project document says otherwise: the project spec wins for *what* to
 build; this standard wins for *how* to build it.
+
+## Installation / Update Mechanism (Mandatory)
+
+**The Toolbox repo (`~/Projects/Toolbox`) is the canonical source.** Every profile MUST keep its copy synced with it. This is enforced by version comparison + hash check — not trust, not convention.
+
+To update a profile's copy from the repo:
+```bash
+# 1. Copy the canonical file
+cp /home/stefan/Projects/Toolbox/stable/development-process/SKILL.md \
+   ~/.hermes/profiles/<PROFILE>/skills/development-process/SKILL.md
+
+# 2. Verify parity (hashes must match exactly)
+sha256sum /home/stefan/Projects/Toolbox/stable/development-process/SKILL.md \
+  ~/.hermes/profiles/<PROFILE>/skills/development-process/SKILL.md
+```
+
+**Before any dev work**, verify all team members' profiles have the same version as the repo:
+```bash
+for p in bubo cthugha grok nyarlathotep; do
+  sha256sum ~/.hermes/profiles/$p/skills/development-process/SKILL.md \
+            /home/stefan/Projects/Toolbox/stable/development-process/SKILL.md
+done
+```
+All hashes must match. If any differ, that profile is out of sync — update it before starting work. Using a stale skill means missing rules and inconsistent process enforcement across agents.
 
 ## When to Use
 
@@ -64,6 +88,14 @@ This rule is enforceable. Any card or action that would touch the live source wi
 - **Unclear = RUN.** The card type is the scope fence. A card without a type permits no edits.
 
 **Atomicity test (checkable):** a card is atomic only if the **weakest model on the team** can complete it verbatim from its four elements — Objective, Success Criteria, Required Testing, Verification Steps — with **zero unstated context or judgment calls**. If it needs a tradeoff decision, it is not atomic: split it, or write the decision explicitly into the card. Test phrasing: "could the smallest model do this card from the text alone?"
+
+**Mandatory decomposition (v0.4.0 — anchor: t_1042ac01 wing-orphan data loss).** If any card's scope encompasses **more than one independent phase** (detection + migration + prevention, spec + implementation + QA, analysis + fix + tests, or any A → B → C chain where B cannot start before A is done), the executor **MUST decompose it into atomic child cards BEFORE dispatching** — not just "prefer" or "consider" it. Every sub-phase that has its own deliverable, acceptance criteria, and verification becomes a standalone card with `parent` linking back to the umbrella. The umbrella remains `blocked` (or as-needed) until all children are complete; it is closed only when every child finishes. **Never dispatch a card that requires sequential phases as a single execution.** This rule is mandatory because:
+
+- A multi-phase card dispatched to one agent will likely stall or be abandoned if the agent goes offline mid-way, with no durable record of which phases were done vs. pending.
+- QA cannot validate partial completion — there is only one deliverable per card, so a phase that finishes is not verifiable until the whole umbrella closes.
+- The routing pipeline loses visibility into progress: children can be dispatched to different executors (specialists), parent state is opaque from the board alone.
+
+**Check before dispatch:** does this card need more than one independent deliverable? If yes → decompose, link children, leave parent blocked → do not dispatch until children exist and are routable.
 
 **Spec-first gate:** any new feature or behavior change starts as a `spec:` card that merges before dev. Dev cards cite their spec card. See [team-dev-process](../../team-dev-process/SKILL.md) for atomic card workflow, collaboration patterns, and QA gates. "Read the current specs" is one step short of "specs updated and merged before dev starts" — the latter is the gate.
 

@@ -1,9 +1,8 @@
 # Role × Hardware Matrix
 
-| Role          | Hardware     | Prompt Focus                  | Reasoning Level | Notes |
-|---------------|--------------|-------------------------------|------------------|-------|
-| Cthugha       | Standard     | Capability + Truth            | Higher           | Primary dev |
-| Bubo          | BC-250       | Efficiency + Reliability      | Low              | Execution only |
-| Glaux         | BC-250       | Efficiency + Reliability      | Low              | Execution only |
-| Nyarlathotep  | Standard     | Coordination + Clarity        | Medium           | Board owner |
-| Grok          | Standard     | Assessment + Precision        | Medium           | Design only |
+| Role Type       | Hardware Class | Prompt Focus             | Reasoning Level | Notes |
+|-----------------|----------------|--------------------------|------------------|-------|
+| Primary Dev     | Standard       | Capability + Truth       | Higher           | Complex work |
+| Execution Agent | Constrained    | Efficiency + Reliability | Low              | Narrow scope |
+| Coordinator     | Standard       | Coordination + Clarity   | Medium           | Board management |
+| Assessment      | Standard       | Assessment + Precision   | Medium           | Design & review |

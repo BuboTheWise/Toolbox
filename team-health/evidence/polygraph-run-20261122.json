@@ -4,18 +4,18 @@
   "check": "polygraph-health",
   "result": {
     "status": "yellow",
-    "details": "CLI importable & runs (--help exit 0), but 3 P0/P1 open issue(s) block/degrade tool usage: #12, #11, #10. Tooling partially blocked.",
+    "details": "CLI importable & runs (--help exit 0), but 2 P0/P1 open issue(s) block/degrade tool usage: #11, #10. Tooling partially blocked.",
     "metrics": {
       "exit_code": 0,
-      "critical_issues": 3,
-      "p0_issues": 1,
+      "critical_issues": 2,
+      "p0_issues": 0,
       "p1_issues": 2,
       "p2_issues": 7,
       "cli_import_error": false,
       "issue_source": "gh-cli"
     }
   },
-  "time": "2026-11-22T22:39:38Z",
+  "time": "2026-11-22T23:40:12Z",
   "_evidence": {
     "polygraph_repo": "/home/stefan/Projects/Polygraph",
     "github_repo": "BuboTheWise/Polygraph",
@@ -31,20 +31,7 @@
       "error": null
     },
     "issues": {
-      "P0": [
-        {
-          "number": 12,
-          "title": "Skill invocation `python3 scripts/run_polygraph.py --help` fails with `ModuleNotFoundError: polygraph_app`",
-          "labels": [
-            "bug",
-            "documentation"
-          ],
-          "severity": "P0",
-          "blocking": true,
-          "reproduces": false,
-          "note": "issue describes an import/startup failure, but the live --help probe returned exit 0 with no import error - failure no longer reproduces (stale open issue)."
-        }
-      ],
+      "P0": [],
       "P1": [
         {
           "number": 11,

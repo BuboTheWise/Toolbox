@@ -3,18 +3,18 @@
   "scope": "workflow-efficiency",
   "check": "task-completion-rate",
   "result": {
-    "status": "yellow",
-    "details": "16/20 of the last 20 completed task(s) reached the completion gate without blockers or rework (80.0%); 2 had a blocked/needs_input status change, 3 had rework runs (crashed/blocked/timed-out). Verdict YELLOW: completion rate in 60-80% band.",
+    "status": "green",
+    "details": "17/20 of the last 20 completed task(s) reached the completion gate without blockers or rework (85.0%); 2 had a blocked/needs_input status change, 2 had rework runs (crashed/blocked/timed-out). Verdict GREEN: completion rate > 80%.",
     "metrics": {
-      "completion_rate": 80.0,
+      "completion_rate": 85.0,
       "total_tasks": 20,
-      "clean_tasks": 16,
+      "clean_tasks": 17,
       "blocked_tasks": 2,
-      "rework_tasks": 3,
+      "rework_tasks": 2,
       "window": 20
     }
   },
-  "time": "2026-11-22T23:07:57Z",
+  "time": "2026-11-22T23:42:47Z",
   "_evidence": {
     "kanban_db": "/home/stefan/.hermes/kanban.db",
     "window": 20,
@@ -36,6 +36,45 @@
       ]
     },
     "tasks": [
+      {
+        "id": "t_9b196736",
+        "title": "[dev] polygraph #12 \u2014 run_polygraph.py --help ModuleNotFoundError: polygraph_app",
+        "assignee": "bubo",
+        "completed_at": 1795390531,
+        "clean": true,
+        "blocked_events": 0,
+        "blocked_details": [],
+        "runs": [
+          "completed"
+        ],
+        "rework_runs": []
+      },
+      {
+        "id": "t_6e5dfde2",
+        "title": "RUN #1380 Pillar 4: Cross-agent communication health",
+        "assignee": "nyarlathotep",
+        "completed_at": 1795389993,
+        "clean": true,
+        "blocked_events": 0,
+        "blocked_details": [],
+        "runs": [
+          "completed"
+        ],
+        "rework_runs": []
+      },
+      {
+        "id": "t_4747ba6d",
+        "title": "FIX: Pillar 3 \u2014 Task completion rate (kanban board evidence analysis)",
+        "assignee": "cthugha",
+        "completed_at": 1795389472,
+        "clean": true,
+        "blocked_events": 0,
+        "blocked_details": [],
+        "runs": [
+          "completed"
+        ],
+        "rework_runs": []
+      },
       {
         "id": "t_d491c881",
         "title": "[dev] memchorus #315 \u2014 gateway tool interpreter resolves memchorus (root gap #312)",
@@ -288,51 +327,6 @@
           {
             "outcome": "crashed",
             "error_tail": "ut-length limit. To fix this: \u2192 Compress the conversation with `/compress` or start a new session \u2192 Or raise the model's context window (e.g. Ollama `num_ctx`)\""
-          }
-        ]
-      },
-      {
-        "id": "t_858fea41",
-        "title": "[fix] memchorus #255 (3/3) \u2014 doctor probe D: assert exit code AND body",
-        "assignee": "cthugha",
-        "completed_at": 1795370030,
-        "clean": true,
-        "blocked_events": 0,
-        "blocked_details": [],
-        "runs": [
-          "completed"
-        ],
-        "rework_runs": []
-      },
-      {
-        "id": "t_82b736ce",
-        "title": "[fix] Polygraph #10 \u2014 OPSEC: remove hardcoded user home paths that leak local username",
-        "assignee": "bubo",
-        "completed_at": 1795367633,
-        "clean": true,
-        "blocked_events": 0,
-        "blocked_details": [],
-        "runs": [
-          "completed"
-        ],
-        "rework_runs": []
-      },
-      {
-        "id": "t_db91c30e",
-        "title": "[fix] Polygraph #12 \u2014 Skill invocation `python3 scripts/run_polygraph.py --help` fails with ModuleNotFoundError",
-        "assignee": "bubo",
-        "completed_at": 1795365098,
-        "clean": false,
-        "blocked_events": 0,
-        "blocked_details": [],
-        "runs": [
-          "crashed",
-          "completed"
-        ],
-        "rework_runs": [
-          {
-            "outcome": "crashed",
-            "error_tail": "ys.path The behavioral guard was triggered incorrectly on Kanban tools due to path matching, but **no pip install -e commands were ever executed** in this fix.'"
           }
         ]
       }

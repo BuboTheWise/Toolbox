@@ -1,8 +1,8 @@
 # Role × Hardware Matrix
 
-| Role Type       | Hardware Class | Prompt Focus             | Reasoning Level | Notes |
-|-----------------|----------------|--------------------------|------------------|-------|
-| Primary Dev     | Standard       | Capability + Truth       | Higher           | Complex work |
-| Execution Agent | Constrained    | Efficiency + Reliability | Low              | Narrow scope |
-| Coordinator     | Standard       | Coordination + Clarity   | Medium           | Board management |
-| Assessment      | Standard       | Assessment + Precision   | Medium           | Design & review |
+| Hardware Class              | Prompt Focus             | Reasoning Level | Notes |
+|-----------------------------|--------------------------|------------------|-------|
+| BC-250 (16GB GDDR6)         | Efficiency + Reliability | Low              | Execution agents |
+| Framework Panther Lake (64GB LPCAMM2) | Capability + Truth | Higher | Primary development |
+| Desktop 3090 Class          | Capability + Truth       | Higher           | High-resource tasks |
+| Coordinator Node            | Coordination + Clarity   | Medium           | Board & routing |
